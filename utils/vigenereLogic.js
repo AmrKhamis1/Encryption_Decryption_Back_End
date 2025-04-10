@@ -109,7 +109,7 @@ const getSequences = (text, keyLength) => {
 };
 
 // find possible shifts for each sequence with improved frequency analysis
-const findBestShifts = (sequence, numOptions = 8) => {
+const findBestShifts = (sequence, numOptions = 26) => {
   const results = [];
 
   // try all 26 possible shifts
@@ -246,7 +246,7 @@ const refineKey = (
   // this continue refining until we reach target or max iterations
   while (
     (bestScore < targetPercentage && iterations < maxIters) ||
-    (iterations < maxIters && iterations - lastImprovedIteration < 10)
+    (iterations < maxIters && iterations - lastImprovedIteration < 20)
   ) {
     iterations++;
     console.log(iterations);
@@ -380,8 +380,8 @@ const generateKeys = (shiftOptions) => {
     combinations = newCombinations;
 
     // limit number of combinations to prevent overload
-    if (combinations.length > 5000) {
-      combinations = combinations.slice(0, 5000);
+    if (combinations.length > 5) {
+      combinations = combinations.slice(0, 1000);
     }
   }
 

@@ -85,7 +85,7 @@ function bruteForceCrack(
       wordStats,
       chiSquared,
       compositeScore,
-      preview: decrypted.substring(0, 100),
+      preview: decrypted.substring(0, 1000),
     });
   }
 
@@ -93,7 +93,7 @@ function bruteForceCrack(
   results.sort((a, b) => b.compositeScore - a.compositeScore);
 
   // get top 5 results
-  const topResults = results.slice(0, 5);
+  const topResults = results.slice(0, 5000);
 
   // get full decryption of best result
   const fullDecryption =
@@ -188,9 +188,7 @@ function cryptanalysisCrack(
   keyLengthScores.sort((a, b) => b.avgIC - a.avgIC);
 
   // take top 3 most likely key lengths
-  const likelyKeyLengths = keyLengthScores
-    .slice(0, 3)
-    .map((item) => item.length);
+  const likelyKeyLengths = keyLengthScores.map((item) => item.length);
 
   let bestResult = null;
 
@@ -199,7 +197,7 @@ function cryptanalysisCrack(
     const sequences = vigenereLogic.getSequences(ciphertext, keyLength);
 
     const shiftOptions = sequences.map((seq) =>
-      vigenereLogic.findBestShifts(seq, 3)
+      vigenereLogic.findBestShifts(seq, 10)
     );
 
     const potentialKeys = vigenereLogic.generateKeys(shiftOptions);
@@ -268,7 +266,7 @@ function cryptanalysisCrack(
       wordStats: bestResult.wordStats,
       chiSquared: bestResult.chiSquared,
       compositeScore: bestResult.compositeScore,
-      preview: bestResult.decrypted.substring(0, 100),
+      preview: bestResult.decrypted.substring(0, 1000),
     });
   }
 
