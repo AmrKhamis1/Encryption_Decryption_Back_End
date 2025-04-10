@@ -1,4 +1,4 @@
-// Core Vigenère cipher logic adapted from React codebase
+// VigenereLogic.js - Core Vigenère cipher operations for Node.js backend
 
 // English letter frequencies (most common to least common)
 const ENGLISH_FREQUENCIES = {
@@ -30,11 +30,7 @@ const ENGLISH_FREQUENCIES = {
   Z: 0.0007,
 };
 
-/**
- * Calculate Index of Coincidence (helps determine key length)
- * @param {string} text - Text to analyze
- * @returns {number} - Index of Coincidence value
- */
+// Calculate Index of Coincidence (helps determine key length)
 const calculateIC = (text) => {
   const cleanText = text.toUpperCase().replace(/[^A-Z]/g, "");
   const frequencies = {};
@@ -56,11 +52,7 @@ const calculateIC = (text) => {
   return sum / (length * (length - 1));
 };
 
-/**
- * Calculate frequency of each letter in the text
- * @param {string} text - Text to analyze
- * @returns {Object} - Letter frequencies
- */
+// Calculate frequency of each letter in the text
 const getFrequencies = (text) => {
   const cleanText = text.toUpperCase();
   const frequencies = {};
@@ -82,11 +74,7 @@ const getFrequencies = (text) => {
   return frequencies;
 };
 
-/**
- * Compare letter frequencies to English using Chi-squared test
- * @param {Object} frequencies - Letter frequencies
- * @returns {number} - Chi-squared statistic (lower is better)
- */
+// Compare letter frequencies to English using Chi-squared test
 const calculateChiSquared = (frequencies) => {
   let chiSquared = 0;
   for (let i = 0; i < 26; i++) {
@@ -100,12 +88,7 @@ const calculateChiSquared = (frequencies) => {
   return chiSquared; // Lower is better (more like English)
 };
 
-/**
- * Split text into sequences based on key length
- * @param {string} text - Text to split
- * @param {number} keyLength - Length of key
- * @returns {Array} - Array of sequences
- */
+// Split text into sequences based on key length
 const getSequences = (text, keyLength) => {
   // Create array to hold each sequence
   const sequences = Array(keyLength)
@@ -125,12 +108,7 @@ const getSequences = (text, keyLength) => {
   return sequences;
 };
 
-/**
- * Find possible shifts for each sequence with improved frequency analysis
- * @param {string} sequence - Sequence to analyze
- * @param {number} numOptions - Number of options to return
- * @returns {Array} - Array of shifts
- */
+// Find possible shifts for each sequence with improved frequency analysis
 const findBestShifts = (sequence, numOptions = 8) => {
   const results = [];
 
@@ -176,21 +154,12 @@ const findBestShifts = (sequence, numOptions = 8) => {
   return results.slice(0, numOptions).map((r) => r.shift);
 };
 
-/**
- * Convert shifts to a key string
- * @param {Array} shifts - Array of shifts
- * @returns {string} - Key string
- */
+// Convert shifts to a key string
 const shiftsToKey = (shifts) => {
   return shifts.map((shift) => String.fromCharCode(shift + 65)).join("");
 };
 
-/**
- * Decrypt text with a given key
- * @param {string} text - Text to decrypt
- * @param {string} key - Key to use
- * @returns {string} - Decrypted text
- */
+// Decrypt text with a given key
 const decryptWithKey = (text, key) => {
   if (!key) return text;
 
@@ -225,12 +194,7 @@ const decryptWithKey = (text, key) => {
   return result;
 };
 
-/**
- * Count recognized English words in text
- * @param {string} text - Text to analyze
- * @param {Object} dictionary - Dictionary of words with weights
- * @returns {Object} - Word stats
- */
+// Count recognized English words in text
 const countRecognizedWords = (text, dictionary) => {
   const words = text
     .toLowerCase()
@@ -262,50 +226,14 @@ const countRecognizedWords = (text, dictionary) => {
   };
 };
 
-/**
- * Generate possible keys from shift options
- * @param {Array} shiftOptions - Array of shift options
- * @returns {Array} - Array of keys
- */
-const generateKeys = (shiftOptions) => {
-  // Start with first letter options
-  let combinations = shiftOptions[0].map((shift) => [shift]);
-
-  // Add each subsequent letter's options
-  for (let i = 1; i < shiftOptions.length; i++) {
-    const newCombinations = [];
-    for (const combo of combinations) {
-      for (const shift of shiftOptions[i]) {
-        newCombinations.push([...combo, shift]);
-      }
-    }
-    combinations = newCombinations;
-
-    // Limit number of combinations to prevent overload
-    if (combinations.length > 500) {
-      combinations = combinations.slice(0, 500);
-    }
-  }
-
-  // Convert shift arrays to key strings
-  return combinations.map((shifts) => shiftsToKey(shifts));
-};
-
-/**
- * Try variations of a key to improve it with higher target percentage
- * @param {string} initialKey - Initial key
- * @param {string} ciphertext - Ciphertext
- * @param {Object} dictionary - Dictionary of words
- * @param {number} targetPercentage - Target word recognition percentage
- * @param {number} maxIters - Maximum iterations
- * @returns {Object} - Refinement result
- */
+// Try variations of a key to improve it with higher target percentage
 const refineKey = (
   initialKey,
   ciphertext,
   dictionary,
   targetPercentage,
-  maxIters
+  maxIters,
+  progressCallback
 ) => {
   let bestKey = initialKey;
   let bestDecrypted = decryptWithKey(ciphertext, bestKey);
@@ -316,17 +244,29 @@ const refineKey = (
   let lastImprovedIteration = 0;
 
   // Continue refining until we reach target or max iterations
+  // Add a stagnation check: if no improvement in last 10 iterations, try more aggressive changes
   while (
     (bestScore < targetPercentage && iterations < maxIters) ||
     (iterations < maxIters && iterations - lastImprovedIteration < 10)
   ) {
     iterations++;
+    console.log(iterations);
+    if (progressCallback) {
+      progressCallback(
+        `Refining key (iteration ${iterations}/${maxIters}). Current recognition: ${bestScore.toFixed(
+          2
+        )}%`
+      );
+    }
 
     let foundBetter = false;
+
+    // Stagnation strategy: if stuck for a while, make more dramatic changes
     const stagnating = iterations - lastImprovedIteration > 5;
 
     // Try changing one letter at a time
     for (let pos = 0; pos < bestKey.length; pos++) {
+      // Random shuffling of shifts to prevent getting stuck in local maxima
       const shiftOrder = Array.from({ length: 26 }, (_, i) => i);
       for (let i = shiftOrder.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -334,13 +274,16 @@ const refineKey = (
       }
 
       for (const shift of shiftOrder) {
+        // Skip current letter
         if (bestKey.charCodeAt(pos) - 65 === shift) continue;
 
+        // Create new key with this letter changed
         const newKey =
           bestKey.substring(0, pos) +
           String.fromCharCode(65 + shift) +
           bestKey.substring(pos + 1);
 
+        // Test this key
         const decrypted = decryptWithKey(ciphertext, newKey);
         const wordStats = countRecognizedWords(decrypted, dictionary);
 
@@ -427,13 +370,32 @@ const refineKey = (
   };
 };
 
-/**
- * Rate the quality of a key based on multiple factors
- * @param {string} key - Key to rate
- * @param {string} ciphertext - Ciphertext
- * @param {Object} dictionary - Dictionary of words
- * @returns {Object} - Key quality
- */
+// Generate possible keys from shift options
+const generateKeys = (shiftOptions) => {
+  // Start with first letter options
+  let combinations = shiftOptions[0].map((shift) => [shift]);
+
+  // Add each subsequent letter's options
+  for (let i = 1; i < shiftOptions.length; i++) {
+    const newCombinations = [];
+    for (const combo of combinations) {
+      for (const shift of shiftOptions[i]) {
+        newCombinations.push([...combo, shift]);
+      }
+    }
+    combinations = newCombinations;
+
+    // Limit number of combinations to prevent overload
+    if (combinations.length > 500) {
+      combinations = combinations.slice(0, 500);
+    }
+  }
+
+  // Convert shift arrays to key strings
+  return combinations.map((shifts) => shiftsToKey(shifts));
+};
+
+// Rate the quality of a key based on multiple factors
 const rateKeyQuality = (key, ciphertext, dictionary) => {
   const decrypted = decryptWithKey(ciphertext, key);
   const wordStats = countRecognizedWords(decrypted, dictionary);
@@ -457,6 +419,7 @@ const rateKeyQuality = (key, ciphertext, dictionary) => {
   };
 };
 
+// Export all the necessary functions
 module.exports = {
   calculateIC,
   getFrequencies,

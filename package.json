@@ -17,6 +17,7 @@
     "helmet": "^7.1.0",
     "morgan": "^1.10.0",
     "node-worker-threads-pool": "^1.5.1",
+    "webworker": "^0.8.4",
     "worker-threads-pool": "^2.0.0"
   },
   "devDependencies": {

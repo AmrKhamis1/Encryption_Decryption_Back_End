@@ -1,41 +1,25 @@
-const { parentPort, workerData } = require("worker_threads");
+const { parentPort } = require("worker_threads");
 const vigenereLogic = require("../utils/vigenereLogic");
 
-// If using as part of a StaticPool (which you are)
-if (parentPort) {
-  // Handle the task directly from the main thread
-  parentPort.on("message", (task) => {
-    console.log("[WORKER] Received task:", task.ciphertext);
-    try {
-      const result = processTask(task);
-      parentPort.postMessage(result);
-      console.log("[WORKER] Task completed and sent");
-    } catch (error) {
-      console.error("[WORKER ERROR]", error.stack || error);
-      parentPort.postMessage({
-        error: true,
-        message: error.message,
-      });
-    }
-  });
-}
+// Setup message handler for worker_threads
+parentPort.on("message", async (task) => {
+  console.log("[WORKER] Received task:", task.ciphertext);
 
-// Separately export the function for StaticPool
-module.exports = function (task) {
-  console.log("[WORKER-POOL] Received task:", task.ciphertext);
   try {
-    return processTask(task);
+    const result = await processTask(task);
+    parentPort.postMessage(result);
+    console.log("[WORKER] Task completed and sent");
   } catch (error) {
-    console.error("[WORKER-POOL ERROR]", error.stack || error);
-    return {
+    console.error("[WORKER ERROR]", error.stack || error);
+    parentPort.postMessage({
       error: true,
       message: error.message,
-    };
+    });
   }
-};
+});
 
 // Shared processing function
-function processTask(task) {
+async function processTask(task) {
   const {
     ciphertext,
     maxKeyLength,
@@ -49,7 +33,7 @@ function processTask(task) {
   let result;
   if (useBruteForce && knownKeys && knownKeys.length > 0) {
     console.log("[WORKER] Running bruteForceCrack...");
-    result = bruteForceCrack(
+    result = await bruteForceCrack(
       ciphertext,
       knownKeys,
       dictionary,
@@ -58,7 +42,7 @@ function processTask(task) {
     );
   } else {
     console.log("[WORKER] Running geneticCrack...");
-    result = cryptanalysisCrack(
+    result = await cryptanalysisCrack(
       ciphertext,
       maxKeyLength,
       dictionary,
@@ -70,6 +54,7 @@ function processTask(task) {
   console.log("[WORKER] Result calculated:", result.method);
   return result;
 }
+
 /**
  * Brute force approach using known common keys
  * @param {string} ciphertext - Encrypted text

@@ -25,11 +25,10 @@ const vkData = JSON.parse(
 );
 
 // Create a worker pool for CPU intensive operations
-// Adjust the size based on server CPU cores
-const WORKER_COUNT = Math.max(1, require("os").cpus().length - 3);
-const workerPath = path.resolve(__dirname, "../workers/vigenereWorker.js");
+// Adjust the size based on available CPU cores or desired concurrency
+const WORKER_COUNT = Math.max(4, require("os").cpus().length - 1);
+const workerPath = path.resolve(__dirname, "../workers/vigenereWorker.js"); // Use path.resolve for Node.js
 const workerPool = createWorkerPool(workerPath, WORKER_COUNT);
-
 // Track active tasks for status reporting
 let activeTasks = 0;
 let completedTasks = 0;
@@ -86,7 +85,7 @@ exports.crackCipher = async (req, res) => {
 
     // Increment active tasks
     activeTasks++;
-    console.log("pool results");
+    console.log("Starting worker task");
 
     // Use worker for CPU-intensive operation
     const result = await workerPool.runTask({
@@ -98,8 +97,8 @@ exports.crackCipher = async (req, res) => {
       knownKeys: useBruteForce ? vkData.keys : [],
       dictionary,
     });
-    console.log("pool results:", result);
-    // Log the received results
+    console.log("Worker pool results:", result);
+
     // Decrement active tasks and increment completed tasks
     activeTasks--;
     completedTasks++;
@@ -143,5 +142,14 @@ exports.getStatus = (req, res) => {
     activeTasks,
     completedTasks,
     uptime: `${Math.floor(uptime / 60)} minutes, ${uptime % 60} seconds`,
+    activeWorkers: workerPool.active,
+    pendingTasks: workerPool.pending,
   });
 };
+
+// Make sure to handle cleanup properly when the application exits
+process.on("exit", () => {
+  if (workerPool.terminate) {
+    workerPool.terminate();
+  }
+});
