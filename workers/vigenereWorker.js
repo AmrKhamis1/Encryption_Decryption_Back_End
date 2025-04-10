@@ -55,15 +55,6 @@ async function processTask(task) {
   return result;
 }
 
-/**
- * Brute force approach using known common keys
- * @param {string} ciphertext - Encrypted text
- * @param {Array<string>} keys - Known keys to try
- * @param {Object} dictionary - Dictionary for word recognition
- * @param {number} targetRecognition - Target word recognition percentage
- * @param {number} maxIterations - Maximum refinement iterations
- * @returns {Object} - Results of cracking attempt
- */
 function bruteForceCrack(
   ciphertext,
   keys,
@@ -73,16 +64,16 @@ function bruteForceCrack(
 ) {
   const results = [];
 
-  // Try each known key
+  // try each known key
   for (const key of keys) {
     const decrypted = vigenereLogic.decryptWithKey(ciphertext, key);
     const wordStats = vigenereLogic.countRecognizedWords(decrypted, dictionary);
 
-    // Calculate additional metrics for better evaluation
+    // calculate additional metrics for better evaluation
     const frequencies = vigenereLogic.getFrequencies(decrypted);
     const chiSquared = vigenereLogic.calculateChiSquared(frequencies);
 
-    // Calculate composite score
+    // calculate composite score
     const compositeScore =
       wordStats.percentage * 0.7 +
       wordStats.weightedScore * 15 -
@@ -98,19 +89,19 @@ function bruteForceCrack(
     });
   }
 
-  // Sort by composite score (higher is better)
+  // sort by composite score (higher is better)
   results.sort((a, b) => b.compositeScore - a.compositeScore);
 
-  // Get top 5 results
+  // get top 5 results
   const topResults = results.slice(0, 5);
 
-  // Get full decryption of best result
+  // get full decryption of best result
   const fullDecryption =
     topResults.length > 0
       ? vigenereLogic.decryptWithKey(ciphertext, topResults[0].key)
       : "";
 
-  // Try to refine the best key if it's not good enough
+  // try to refine the best key if it's not good enough
   if (
     topResults.length > 0 &&
     topResults[0].wordStats.percentage < targetRecognition
@@ -134,7 +125,7 @@ function bruteForceCrack(
         refinementResult.finalKey
       );
 
-      // Add the refined result as the new top result
+      // add the refined result as the new top result
       topResults.unshift({
         key: refinementResult.finalKey,
         keyLength: refinementResult.finalKey.length,
@@ -147,7 +138,7 @@ function bruteForceCrack(
         preview: refinedDecryption.substring(0, 100),
       });
 
-      // Update full decryption with the refined result
+      // update full decryption with the refined result
       return {
         topResults,
         fullDecryption: refinedDecryption,
@@ -163,15 +154,7 @@ function bruteForceCrack(
   };
 }
 
-/**
- * Cryptanalysis approach to crack the cipher
- * @param {string} ciphertext - Encrypted text
- * @param {number} maxKeyLength - Maximum key length to try
- * @param {Object} dictionary - Dictionary for word recognition
- * @param {number} targetRecognition - Target word recognition percentage
- * @param {number} maxIterations - Maximum refinement iterations
- * @returns {Object} - Results of cracking attempt
- */
+// ******************************   this function used only when brute force is false   ******************************
 function cryptanalysisCrack(
   ciphertext,
   maxKeyLength,
@@ -179,20 +162,20 @@ function cryptanalysisCrack(
   targetRecognition,
   maxIterations
 ) {
-  // Clean the ciphertext for analysis
+  // clean the ciphertext for analysis
   const cleanText = ciphertext.toUpperCase().replace(/[^A-Z]/g, "");
 
   if (cleanText.length < 20) {
     throw new Error("Ciphertext too short for reliable analysis");
   }
 
-  // Step 1: Find the most likely key length using Index of Coincidence
+  // find the most likely key length using Index of Coincidence
   const keyLengthScores = [];
   for (let length = 1; length <= maxKeyLength; length++) {
     const sequences = vigenereLogic.getSequences(ciphertext, length);
     let totalIC = 0;
 
-    // Calculate average IC for all sequences of this length
+    // calculate average IC for all sequences of this length
     for (const seq of sequences) {
       totalIC += vigenereLogic.calculateIC(seq);
     }
@@ -201,40 +184,36 @@ function cryptanalysisCrack(
     keyLengthScores.push({ length, avgIC });
   }
 
-  // Sort by IC score (higher is better)
+  // sort by IC score (higher is better)
   keyLengthScores.sort((a, b) => b.avgIC - a.avgIC);
 
-  // Take top 3 most likely key lengths
+  // take top 3 most likely key lengths
   const likelyKeyLengths = keyLengthScores
     .slice(0, 3)
     .map((item) => item.length);
 
   let bestResult = null;
 
-  // Try each likely key length
+  // try each likely key length
   for (const keyLength of likelyKeyLengths) {
-    // Step 2: Split text into sequences by key position
     const sequences = vigenereLogic.getSequences(ciphertext, keyLength);
 
-    // Step 3: Find best shifts for each position
-    const shiftOptions = sequences.map(
-      (seq) => vigenereLogic.findBestShifts(seq, 3) // Get top 3 shifts for each position
+    const shiftOptions = sequences.map((seq) =>
+      vigenereLogic.findBestShifts(seq, 3)
     );
 
-    // Step 4: Generate potential keys from shift combinations
     const potentialKeys = vigenereLogic.generateKeys(shiftOptions);
 
-    // Step 5: Test each potential key
     const keyResults = [];
     for (const key of potentialKeys) {
       const quality = vigenereLogic.rateKeyQuality(key, ciphertext, dictionary);
       keyResults.push(quality);
     }
 
-    // Sort by composite score (higher is better)
+    // sort by composite score (higher is better)
     keyResults.sort((a, b) => b.compositeScore - a.compositeScore);
 
-    // Keep best result
+    // keep best result
     if (keyResults.length > 0) {
       const bestKeyForLength = keyResults[0];
       if (
@@ -246,7 +225,7 @@ function cryptanalysisCrack(
     }
   }
 
-  // If no result found
+  // If there is no result found
   if (!bestResult) {
     return {
       topResults: [],
@@ -255,7 +234,7 @@ function cryptanalysisCrack(
     };
   }
 
-  // Try to refine the best key
+  // try to refine the best key
   const refinementResult = vigenereLogic.refineKey(
     bestResult.key,
     ciphertext,
@@ -264,7 +243,7 @@ function cryptanalysisCrack(
     maxIterations
   );
 
-  // Create the top results array
+  // create the top results array
   const topResults = [
     {
       key: refinementResult.finalKey,
@@ -281,7 +260,7 @@ function cryptanalysisCrack(
     },
   ];
 
-  // Add original result if different from refined
+  // add original result if different from refined
   if (refinementResult.finalKey !== bestResult.key) {
     topResults.push({
       key: bestResult.key,
