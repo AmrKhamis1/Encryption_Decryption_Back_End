@@ -1,6 +1,8 @@
 const { parentPort } = require("worker_threads");
 const vigenereLogic = require("../utils/vigenereLogic");
 
+console.log(`Worker started on thread ${require("worker_threads").threadId}`);
+
 // Setup message handler for worker_threads
 parentPort.on("message", async (task) => {
   console.log("[WORKER] Received task:", task.ciphertext);

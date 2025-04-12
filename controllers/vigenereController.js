@@ -24,7 +24,7 @@ const vkData = JSON.parse(
   fs.readFileSync(path.join(__dirname, "../data/vk.json"), "utf8")
 );
 
-const WORKER_COUNT = Math.max(4, require("os").cpus().length - 1);
+const WORKER_COUNT = Math.max(4, require("os").cpus().length);
 const workerPath = path.resolve(__dirname, "../workers/vigenereWorker.js");
 const workerPool = createWorkerPool(workerPath, WORKER_COUNT);
 

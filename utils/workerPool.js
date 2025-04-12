@@ -2,12 +2,6 @@
 const { Worker } = require("worker_threads");
 const path = require("path");
 
-/**
- * Creates a pool of Worker threads
- * @param {string} workerPath - Path to the worker script
- * @param {number} size - Number of workers in the pool
- * @returns {Object} - Pool interface with runTask method
- */
 exports.createWorkerPool = (workerPath, size) => {
   console.log(`Creating worker pool with ${size} workers at ${workerPath}`);
 
